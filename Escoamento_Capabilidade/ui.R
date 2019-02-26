@@ -7,48 +7,12 @@ library(SixSigma)
 library(sqldf)
 library(ROracle)
 library(rmarkdown)
-library(odbc)
 library(readxl)
 library(DT)
 library(glue)
 library(dplyr)
+library(sqldf)
 
-
-
-
-#-----------Declaracao da Matriz Transporta para o QCC---------------
-histograma <- c(600, 615, 620, 622, 603, 607, 627, 605, 641, 613, 613, 625, 635, 646, 636, 631, 620, 621, 635, 608, 629, 607, 608, 615, 632, 643)
-histograma = matrix(histograma, nrow = 1, ncol = 26, byrow = TRUE)
-a = histograma
-
-
-normalidade <- c(600, 615, 620, 622, 603, 607, 627, 605, 641, 613, 613, 625, 635, 646, 636, 631, 620, 621, 635, 608, 629, 607, 608, 615, 632, 643)
-normalidade = matrix(normalidade, nrow = 26, ncol = 1, byrow = TRUE)
-
-#normalidadeYs = matrix(histogramaYs, nrow = 8, ncol = 1, byrow = TRUE)
-#cap = matrix(histogramaYs, nrow = 1, ncol = 2, byrow = TRUE)
-
-#--------------------TESTE--------------------------------------------
-#Ys<-read_excel(path = "C:/Users/Administrator/Desktop/Ys.xlsx", sheet = 1)
-#str(Ys)
-#summary(Ys)
-#head(Ys)
-
-#histogramaYs <- sqldf('
-#      select Ys, TS, round(Ys/TS,2) as Tracao
-#                      from Ys
-#                      where Ordem = "LQ01134205"
-#                      
-#                      ')
-#eixoX = histogramaYs$YS
-#
-#hist(x = eixoX, col = 'yellow')
-#----------------------------------------------------------------------
-
-
-
-#Histograma do Ys que deve ser criado
-#hist(Ys, nclass=)
 
 dashboardPage(
   
@@ -57,16 +21,22 @@ dashboardPage(
   
   dashboardSidebar(width = 300,
                    
+                   
+                   
                    # Range de Selecao de Data
                    dateRangeInput("dates", 
                                   label = ("Periodo"),
-                                  start = Sys.Date() - 90, end = Sys.Date() - 1,
+                                  start = Sys.Date() - 365, end = Sys.Date() - 1,
                                   format = "dd/mm/yyyy",
                                   language = "pt-BR",
                                   separator = "ate"
                                   
                    ),
                    hr(),
+                   
+                   
+                   
+                   
                    
                    
                    #Entrada de Descricao do Aco. VERIFICAR QUE NEM TODAS SAO APENAS NUMERICAS
@@ -76,22 +46,25 @@ dashboardPage(
                                
                                
                                
-                               numericInput(inputId= "diametro", label= "Diametro do Aco:", value= 0),
+                               numericInput(inputId= "diametro", label= "Diametro do Aco:", value = 0),
                                
-                               numericInput(inputId= "parede", label= "Parede:", value= 0),
+                               numericInput(inputId= "parede", label= "Parede:", value = 0),
                                
-                               textInput(inputId= "grau", label= "Grau:", value= 0),
+                               numericInput(inputId= "ciclo", label = "Tempo de Ciclo:", value = 0),
                                
-                               textInput(inputId= "aqa", label= "AQA:", value= 0),
+                               selectInput(inputId= "grau", label = "Grau:",
+                                           choices = list('DNV SMLS 415 SF','DNV SMLS 450','DNV SMLS 450 S','DNV SMLS 450 SF','DNV 450 FPD','DNV 450 SFDP','DNV 450 SFPD','K55','L80 TIPO 1','L80 TIPO 1 HCE','L80 1%Cr','L80EC','L80SS','N80 TIPO Q','P110','P110EC','P29HBV-QT','Q125 TIPO 1','R95','T95 TIPO 1','X42','X42QO','X52Q','X52QO','X52QS','X60QOS','X60QO/X60QS','X60QS/X60QO','X65QO','X65QOS','X65QS','X70QO')
+                               ),
                                
-                               #AQA Checkbox sera um CHeckbox com os valores retornados da pesquisa do banco
-                               #textInput(inputId= "aqacheck", label= "AQA:", value= 0),
+                               selectInput("aqa", "Tipo de AQA:",
+                                           choices=list('P24M','P25B','S43M','T989','VD00','VD04','VD06','VD07','VD08','VD26','VD28','VD30','VD31','VD32','VD33','VD34','VD43','VD48','VD50','VD51','VD56','VD57','VD58','VD59','VD60','VD61','VD62','VD63','VD68','VS01','VS04','VS06','VS09','VS13','VS19','VS24','VS33','VS35','VS49','VS53','VS55','9')
+                               ),
+                               
+                               selectInput("ordemlista", "Tipo de Ordem:",
+                                           choices=list('LQ','LQR', 'LQX')
+                               ),
                                
                                
-                               #Tempo de Ciclo sera um CHeckbox com os valores retornados da pesquisa do banco
-                               numericInput(inputId= "ciclo", label = "Ciclo:", value = 0),
-                               
-                               actionButton("plot", "Plotar!"),
                                
                                hr()
                                
@@ -105,11 +78,17 @@ dashboardPage(
                                
                                
                                #Paradas
-                               numericInput(inputId= "hf1", label= "Tempo Excessivo: (HF1)", value= 0),
+                               numericInput(inputId= "hf1.0", label= " Menor Tempo Excessivo: (HF1)", value= 0),
                                
-                               numericInput(inputId= "tf1", label= "Tempo Excessivo: (TF1)", value= 0),
+                               numericInput(inputId= "hf1.1", label= "Maior Tempo Excessivo: (HF1)", value= 100),
                                
-                               numericInput(inputId= "tf2", label= "Tempo Excessivo: (TF2)", value= 0),
+                               numericInput(inputId= "tf1.0", label= "Menor Tempo Excessivo: (TF1)", value= 0),
+                               
+                               numericInput(inputId= "tf1.1", label= "Maior Tempo Excessivo: (TF1)", value= 100),
+                               
+                               numericInput(inputId= "tf2.0", label= "Menor Tempo Excessivo: (TF2)", value= 0),
+                               
+                               numericInput(inputId= "tf2.1", label= "Maior Tempo Excessivo: (TF2)", value= 100),
                                
                                hr()
                                
@@ -164,19 +143,25 @@ dashboardPage(
                    
                    
                    
-                   #Upar planilha em Excel
-                   hr(),
+                   #------------------------------------Upar planilha em Excel-------------------------------
+                   #         hr(),
                    
-                   sidebarMenu(
-                     fileInput(inputId = "file1",placeholder = "Selecione a planilha", buttonLabel = "Upar", label = "Ou selecione a planilha do Ys", multiple = FALSE, accept = ".xlsx")
-                     
-                   ), #fecha input de planilha
+                   #         sidebarMenu(
+                   #           fileInput(inputId = "file1",placeholder = "Selecione a planilha", buttonLabel = "Upar", label = "Ou selecione a planilha do Ys", multiple = FALSE, accept = ".xlsx")
                    
+                   #         ), #fecha input de planilha
                    
+                   #-------------------------------------------------------------------------------------------
                    
                    #Texto que ajuda e especifica os codigos
-                   helpText("Os campos nao precisam necessariamente estar todos preenchidos para",
-                            "realizar a busca.")
+                   helpText("Os campos precisam estar todos preenchidos para",
+                            "realizar a busca."),
+                   
+                   hr(),
+                   
+                   actionButton("plot", "Plotar!")
+                   
+                   
                    
                    
                    
@@ -191,12 +176,12 @@ dashboardPage(
                          #GRAFICO DE CAPABILIDADE
                          box( title = "Relatorio de Capabilidade - Diametro x Parede - AQA - Grau",
                               width = "8",
-                              footer = "Aqui pode vir qualquer texto",
+                              footer = "Capabilidade",
                               plotOutput("histograma")
                          ),
                          
                          box( title = "Valores de Entrada",
-                              width = "3",
+                              width = "4",
                               footer = NULL,
                               tableOutput("entradas")
                          ),
@@ -207,51 +192,59 @@ dashboardPage(
                          textOutput("aqa"),
                          
                          #GRAFICO DE NORMALIDADE
-                         box( title = NULL,
+                         box( title = "Grafico de Normalidade",
                               width = "12",
-                              footer = "Qualquer texto ou valores",
+                              footer = "Normalidade",
                               plotOutput("normalidade")
                               
                          )
                 ), #fecha o tabpanel de GRAFICO. L152
                 
-                tabPanel("Grafico Ys/Ts",
-                         box( title = "Relatorio de Capabilidade - Diametro x Parede - AQA - Grau",
-                              width = "8",
-                              footer = "Aqui pode vir qualquer texto",
-                              plotOutput("histograma2")
-                         ),
-                         
-                         box( title = "Valores de Entrada",
-                              width = "3",
-                              footer = NULL,
-                              tableOutput("entradas2")
-                         ),
-                         
-                         box( title = NULL,
-                              width = "12",
-                              footer = "Qualquer texto ou valores",
-                              plotOutput("normalidade2")
-                         )
-                         
-                ),
+                #----------------------------------------GRAFICO DO BISPO------------------------------------               
                 
+                #            tabPanel("Grafico Ys/Ts",
+                #                    box( title = "Relatorio de Capabilidade - Diametro x Parede - AQA - Grau",
+                #                        width = "8",
+                #                       footer = "Aqui pode vir qualquer texto",
+                #                      plotOutput("histograma2")
+                #                ),
+                
+                #               box( title = "Valores de Entrada",
+                #                   width = "3",
+                #                  footer = NULL,
+                #                 tableOutput("entradas2")
+                #           ),
+                
+                #          box( title = NULL,
+                #              width = "12",
+                #             footer = "Qualquer texto ou valores",
+                #            plotOutput("normalidade2")
+                #      )
+                
+                #  ),
+                
+                #--------------------------------------------------------------------------------------------
                 
                 tabPanel("Dados do Banco",
                          
-                         #img(src = "vsbimg.png", height = 150, width = 150),
                          
                          h4("Dados de Saida", align = "center"),
                          
-                         # tableOutput("contents"),
-                         DT::dataTableOutput("contents2"),
+                         #tableOutput("contents"),
+                         DT::dataTableOutput("contents2")
                          
-                         datatable(
-                           data = tabela_saida, extensions = 'Buttons', options = list(
-                             dom = 'Bfrtip',
-                             buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
-                           )
-                         )
+                         
+                         #-------------------------------------DATATABLE COM BOTOES-----------------------------------                        
+                         # datatable(
+                         #  data = tabela_saida, extensions = 'Buttons', options = list
+                         # (
+                         #  dom = 'Bfrtip',
+                         # buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
+                         # )
+                         # )
+                         
+                         #--------------------------------------------------------------------------------------------                     
+                         
                          
                 ),
                 
@@ -259,8 +252,8 @@ dashboardPage(
                 #Sera criado um metodo que o usuario digita o texto e ele se posiciona em algum lugar no relatorio
                 tabPanel("Texto",
                          
-                         helpText("Texto padrao para exportacao via PDF",
-                                  "Caso tenha um relatorio ja existente, reproduzir o modelo aqui!"),
+                         helpText("Texto padrao para exportacao via PDF.",
+                                  "Clique um 'Baixar Planilha de Dados!' para baixar a tabela em Excel"),
                          br(),
                          br(),
                          
@@ -269,17 +262,11 @@ dashboardPage(
                          br(),
                          br(),
                          
-                         downloadButton("pdfexp", "Exportar PDF"),
-                         
-                         br(),
-                         br(),
-                         
-                         downloadButton("excelexp", "Exportar Excel")
-                         
+                         downloadButton("pdfexp", "Exportar PDF")
                          
                 ) #Fecha ultimo tabpanel. L193
                 
-    ) #fecha o tabsetpanel que inicia a funcao das tabpanel. L150
-  ) #fecha a dashboard body. L149
-) #fecha a dashboardpage que inicia todo o padrao de dash. L31
+    ) #fecha o tabsetpanel que inicia a funcao das tabpanel. 
+  ) #fecha a dashboard body. 
+)#fecha a dashboardpage que inicia todo o padrao de dash. 
 
